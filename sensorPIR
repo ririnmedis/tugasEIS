@@ -1,0 +1,45 @@
+#include <LiquidCrystal_I2C.h>
+
+//define I2C address......
+LiquidCrystal_I2C lcd(0x27,16,2);
+
+#define pirPin 12 //deklarasi pin dari pir yang diberi nama variabel pirPin
+int statusPir = LOW; //deklarasi kondisi dari sensor pir apakah high atau low
+int gerakanPir; //deklarasi variabel untuk pembacaan pir sensor
+int motioncount = 1;
+
+void setup() {
+  pinMode(pirPin, INPUT); //set pirPin menjadi pin input
+  lcd.init(); //menginisialisasi LCD
+  lcd.backlight(); //ini untuk menyalakan lampu latar LCD pada saat mengeluarkan Output
+  lcd.setCursor(2,0); // untuk mengatur Posisi kursor pada layar LCD
+  lcd.print("Praktikum EIS:"); // menampilkan Praktikum Eis di layar LCD
+  lcd.setCursor(2,1); //untuk mengatur posisi kursor pada Lcd
+  lcd.print("Sensor PIR"); // Menampilkan Sensor PIR di layar LCD
+  Serial.begin(9600); //memulai komunikasi serialke serial monitor dengan baud rate 9600
+  delay(4000);
+
+}
+
+void loop() {
+   gerakanPir = digitalRead(pirPin); // untuk membaca nilai digital dari pin yang terhubung ke sensor pir
+  if(gerakanPir==HIGH){ //mengecek kondisi pir, jika mendeteksi gerakan maka skrip di bawah if akan dieksekusi secara berulang-ulang saat pir tetap mendeteksi gerakan
+    delay(1000); // memberi jeda selama 1 detik
+    lcd.clear(); // untuk membersihkan layar LCD
+  lcd.setCursor(0,0);
+  lcd.print("Ada Gerakan"); // menampilkan ada gerakan di layar lcd
+  delay(2000);
+
+    lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Tidak Ada Gerakan");
+  delay(1000);
+  }
+  else{  
+    Serial.println("Tidak Ada Gerakan");
+    // lcd.setBacklight(LOW);
+    lcd.clear();
+  }
+  delay(1000);
+}
+
