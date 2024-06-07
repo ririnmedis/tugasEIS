@@ -1,0 +1,114 @@
+#include <Wire.h>
+#include <WiFi.h>
+#include <WiFiClientSecure.h>
+#include <UniversalTelegramBot.h>
+#include <LiquidCrystal_I2C.h>
+#include <NewPing.h>
+
+#define TRIGGER_PIN 13
+#define ECHO_PIN 12
+#define MAX_DISTANCE 200
+
+#define LED_HIJAU 16
+#define LED_KUNING 5
+#define LED_MERAH 4
+#define BUZZER 14
+
+const char* ssid = "gembel";
+const char* password = "ciumkuduludeh";
+const char* botToken = "6718567666:AAEIY6hNk36yR06YeTXCpIPLgNWtH2LE_QQ";
+const char* chatId = "1869756975";
+
+WiFiClientSecure client;
+UniversalTelegramBot bot(botToken, client);
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE);
+
+unsigned long lastTime;
+unsigned long interval = 1000;
+
+void setup() {
+  Serial.begin(115200);
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+  
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.println("Connecting to WiFi...");
+  }
+
+  client.setInsecure(); 
+  Serial.println("Connected to WiFi");
+
+  Wire.begin(21, 22); // SDA to GPIO 21, SCL to GPIO 22 (default for ESP32)
+  lcd.init();
+  lcd.backlight();
+  
+  pinMode(LED_HIJAU, OUTPUT);
+  pinMode(LED_KUNING, OUTPUT);
+  pinMode(LED_MERAH, OUTPUT);
+  pinMode(BUZZER, OUTPUT);
+  
+  digitalWrite(LED_HIJAU, LOW);
+  digitalWrite(LED_KUNING, LOW);
+  digitalWrite(LED_MERAH, LOW);
+  digitalWrite(BUZZER, LOW);
+  
+  lastTime = millis();
+}
+
+void loop() {
+  if (millis() - lastTime > interval) {
+    lastTime = millis();
+
+    unsigned int distance = sonar.ping_cm();
+    
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Jarak: ");
+    lcd.print(distance);
+    lcd.print(" cm");
+
+    if (distance > 100) {
+      lcd.setCursor(0, 1);
+      lcd.print("Status: Aman");
+      digitalWrite(LED_HIJAU, HIGH);
+      digitalWrite(LED_KUNING, LOW);
+      digitalWrite(LED_MERAH, LOW);
+      digitalWrite(BUZZER, LOW);
+      bot.sendMessage(chatId, "Jarak: " + String(distance) + " cm, Status: Aman");
+    } else if (distance <= 100 && distance > 50) {
+      lcd.setCursor(0, 1);
+      lcd.print("Status: Waspada");
+      digitalWrite(LED_HIJAU, LOW);
+      digitalWrite(LED_KUNING, HIGH);
+      digitalWrite(LED_MERAH, LOW);
+      digitalWrite(BUZZER, LOW);
+      bot.sendMessage(chatId, "Jarak: " + String(distance) + " cm, Status: Waspada");
+    } else {
+      lcd.setCursor(0, 1);
+      lcd.print("Status: Bahaya");
+      digitalWrite(LED_HIJAU, LOW);
+      digitalWrite(LED_KUNING, LOW);
+      digitalWrite(LED_MERAH, HIGH);
+      digitalWrite(BUZZER, HIGH);
+      bot.sendMessage(chatId, "Jarak: " + String(distance) + " cm, Status: Bahaya");
+    }
+  }
+
+  // Check for new messages
+  int numNewMessages = bot.getUpdates(bot.last_message_received + 1);
+  while (numNewMessages) {
+    for (int i = 0; i < numNewMessages; i++) {
+      String chat_id = String(bot.messages[i].chat_id);
+      String text = bot.messages[i].text;
+
+      if (text == "cek jarak") {
+        unsigned int distance = sonar.ping_cm();
+        String message = "Jarak saat ini: " + String(distance) + " cm";
+        bot.sendMessage(chat_id, message);
+      }
+    }
+    numNewMessages = bot.getUpdates(bot.last_message_received + 1);
+  }
+}
